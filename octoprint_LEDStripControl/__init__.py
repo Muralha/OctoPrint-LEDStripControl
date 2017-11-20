@@ -37,6 +37,7 @@ class PiGPIOpin(object):
 		self._pigpiod = pigpiod
 		self._logger = logger
 		self._heat_up = self._settings.get_boolean(['heat_up'])
+		self._start_on = self._settings.get_boolean(['start_on'])
 
 		# attempt to convert the physical pin to a bcm pin
 		# how is this not in a library already?
@@ -73,6 +74,7 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 		self._leds = dict(r=None, g=None, b=None)
 		self._pigpiod = None
 		self._heat_up = None
+		self._start_on = None
 
 	def _setup_pin(self, pin):
 		self._logger.debug(u"_setup_pin(%s)" % (pin,))
@@ -85,6 +87,9 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 			if self._heat_up != self._settings.get_boolean(['heat_up']):
 				self._heat_up = self._settings.get_boolean(['heat_up'])
 
+			if self._start_on != self._settings.get_boolean(['start_on']):
+				self._start_on = self._settings.get_boolean(['start_on'])
+			
 			if self._settings.get_boolean(['pigpiod']):
 				if not self._pigpiod.connected:
 					self._logger.error(u"Unable to communicate with PiGPIOd")
@@ -94,9 +99,19 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 				GPIO.setwarnings(False)
 				GPIO.setmode(GPIO.BOARD)
 				GPIO.setup(pin, GPIO.OUT)
-				GPIO.output(pin, GPIO.HIGH)
+				
+				if self._start_on:
+					GPIO.output(pin, GPIO.HIGH)
+				else:
+					GPIO.output(pin, GPIO.LOW)
+				
 				p = GPIO.PWM(pin, 100)
-			p.start(100)
+			
+			if self._start_on:	
+				p.start(100)
+			else:
+				p.start(0)
+			
 			return p
 
 	def _unregister_leds(self):
@@ -180,7 +195,7 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 		]
 
 	def get_settings_defaults(self):
-		return dict(r=0, g=0, b=0, pigpiod=False, heat_up=True)
+		return dict(r=0, g=0, b=0, pigpiod=False, heat_up=True, start_on=True)
 
 	def on_settings_initialized(self):
 		self._logger.debug(u"LEDStripControl on_settings_load()")

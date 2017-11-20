@@ -34,9 +34,16 @@
     </div>
 </form>
 
-<h4>{{ _('Other options') }}</h4>
+<h4>{{ _('Options') }}</h4>
 
 <form class="form-horizontal">
+
+    <div class="control-group">
+        <label class="checkbox">
+            <input type="checkbox" data-bind="checked: settings.plugins.LEDStripControl.start_on">Start with light ON<br />
+            <span class="help-inline">Start OctoPrint with light ON/OFF.</span>
+        </label>
+    </div>
 
     <div class="control-group">
         <label class="checkbox">
