@@ -33,3 +33,15 @@
         </label>
     </div>
 </form>
+
+<h4>{{ _('Other options') }}</h4>
+
+<form class="form-horizontal">
+
+    <div class="control-group">
+        <label class="checkbox">
+            <input type="checkbox" data-bind="checked: settings.plugins.LEDStripControl.heat_up">Heating up effect
+            <span class="help-inline">Turns the light RED, when a heating temperature is set. Reduces the need to add/modify G-code on files.</span>
+        </label>
+    </div>
+</form>

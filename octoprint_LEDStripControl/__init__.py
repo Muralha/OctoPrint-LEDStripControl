@@ -36,6 +36,7 @@ class PiGPIOpin(object):
 	def __init__(self, pigpiod, pin, logger):
 		self._pigpiod = pigpiod
 		self._logger = logger
+		self._heat_up = self._settings.get_boolean(['heat_up'])
 
 		# attempt to convert the physical pin to a bcm pin
 		# how is this not in a library already?
@@ -71,6 +72,7 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 	def __init__(self):
 		self._leds = dict(r=None, g=None, b=None)
 		self._pigpiod = None
+		self._heat_up = None
 
 	def _setup_pin(self, pin):
 		self._logger.debug(u"_setup_pin(%s)" % (pin,))
@@ -79,6 +81,9 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 
 			if self._pigpiod is None:
 				self._pigpiod = pigpio.pi()
+
+			if self._heat_up != self._settings.get_boolean(['heat_up']):
+				self._heat_up = self._settings.get_boolean(['heat_up'])
 
 			if self._settings.get_boolean(['pigpiod']):
 				if not self._pigpiod.connected:
@@ -145,6 +150,25 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 			for l in dutycycles.keys():
 				self._leds[l].ChangeDutyCycle(dutycycles[l])
 
+		# when bed or nozzle are heating up, it's not necessary to add or modify gcode, to show the heating up sequence
+		elif self._heat_up and gcode and (cmd.startswith("M104") or cmd.startswith("M109") or cmd.startswith("M140") or cmd.startswith("M190")):
+			cmd_option = ""
+			cmd_temp = 0
+			cmd_split = cmd.split()
+
+			# try to find set (S) option. ignore wait (R) option, because normally it's used for cooling down and ignore range (B) option or no options (disable AUTOTEMP).
+			for i in range(len(cmd_split)):
+				if any("S" in s for s in cmd_split[i]):
+					cmd_option = str(cmd_split[i][0])
+					cmd_temp = int(cmd_split[i][1:])
+
+			if cmd_option=="S" and cmd_temp > 0 : # if bed or nozzle heating up... 
+				self._logger.info(u"Heat up detected: %s" % (cmd,))
+				dutycycles = {'r':100.0,'g':0.0,'b':0.0}
+				for l in dutycycles.keys():
+					self._leds[l].ChangeDutyCycle(dutycycles[l])
+
+
 	##~~ SettingsPlugin mixin
 
 	def get_settings_version(self):
@@ -156,7 +180,7 @@ class LEDStripControlPlugin(octoprint.plugin.AssetPlugin,
 		]
 
 	def get_settings_defaults(self):
-		return dict(r=0, g=0, b=0, pigpiod=False)
+		return dict(r=0, g=0, b=0, pigpiod=False, heat_up=True)
 
 	def on_settings_initialized(self):
 		self._logger.debug(u"LEDStripControl on_settings_load()")
